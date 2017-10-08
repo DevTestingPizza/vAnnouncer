@@ -1,36 +1,33 @@
------[ CHANGE THIS ]-------------------------------------------
-local minutesBetweenAnnouncements = 10
-local prefix = "^2[AutoMessage]^0"
-local suffix = "^0."
-local messages = {
+m = {} -- <<< Don't touch this!
+-----------[ SETTINGS ]---------------------------------------------------
+
+-- Delay in minutes between messages
+m.delay = 10
+
+-- Prefix appears in front of each message. 
+-- Suffix appears on the end of each message.
+-- Leave a prefix/suffix empty ( '' ) to disable them.
+m.prefix = '^6[AutoMessage] '
+m.suffix = '^6.'
+
+-- You can make as many messages as you want.
+-- You can use ^0-^9 in your messages to change text color.
+m.messages = {   
     'Message ^1one',
-    'Message ^2two',
-    'Message ^3three',
-    'Message ^4four',
-    'Message ^5five',
-    'Message ^6six'
+    '^4Message two',
+    '^7Message three',
+    'Message ^6four',
+    '^8Message five',
 }
-local ignorelist = {
- --   "ip:127.0.0.1",
-    "steam:012345678901234",
+
+-- Player identifiers on this list will not receive any messages.
+-- Simply remove all identifiers if you don't want an ignore list.
+m.ignorelist = { 
+    'ip:127.0.1.5',
+    'steam:123456789123456',
+    'license:1654687313215747944131321',
 }
----------------------------------------------------------------
-
---  Extra info:
---  You can use ^0-^9 in your messages to change text color.
---  You only need to change the messages above,
---  the code below shouldn't be touched.
---  The prefix string will be placed before every message.
---  The suffix string will be placed after every message.
---  You can set the suffix/prefix to "" to disable them.
---  Add player identifiers (eg: ip:127.0.0.1 or steam:123456)
---  to the ignorelist. Anyone on that ignore list will not
---  receive the automessages. This could be useful if you want
---  to send help messages to new players, but your staff won't
---  get annoyed by the spam. Leave the ignore list empty to
---  always announce to everyone.
-
----------------------------------------------------------------
+--------------------------------------------------------------------------
 
 
 
@@ -45,82 +42,58 @@ local ignorelist = {
 
 
 
--------[ CODE, NO NEED TO TOUCH THIS PART! ]---------
-local playerSpawned = false
-local playerIsOnIgnoreList = false
-local timeout = minutesBetweenAnnouncements * 60000
-local playerIdentifiers = {}
-local messagesEnabled = true
-local count = 0
-for _ in pairs(messages) do count = count + 1 end
 
+
+
+
+-----[ CODE, DON'T TOUCH THIS ]-------------------------------------------
+playerIdentifiers = {}
+enableMessages = true
+timeout = m.delay * 1000 * 60 -- from ms, to sec, to min
+playerOnIgnoreList = false
 RegisterNetEvent('va:setPlayerIdentifiers')
-AddEventHandler('va:setPlayerIdentifiers', function(playerIds)
-    if playerIds == nil then
-        playerIdentifiers = {"null", "null"}
-    else
-        playerIdentifiers = playerIds
-    end
+AddEventHandler('va:setPlayerIdentifiers', function(identifiers)
+    playerIdentifiers = identifiers
 end)
-
-RegisterNetEvent('va:toggleAutoMessage')
-AddEventHandler('va:toggleAutoMessage', function(source)
-    if messagesEnabled then
-        messagesEnabled = false
-        TriggerEvent('chatMessage', '', { 255, 255, 255 }, "^3Automessages are now ^1disabled^3.")
-    else
-        messagesEnabled = true
-        TriggerEvent('chatMessage', '', { 255, 255, 255 }, "^3Automessages are now ^2enabled^3.")
+Citizen.CreateThread(function()
+    while playerIdentifiers == {} or playerIdentifiers == nil do
+        Citizen.Wait(1000)
+        TriggerServerEvent('va:getPlayerIdentifiers')
     end
-end)
-
-function checkForPlayerOnIgnoreList()
-    Citizen.CreateThread(function()
-        Citizen.Wait(2000)
-        for i, id in pairs(playerIdentifiers) do
-            for x, ignoreItem in pairs(ignorelist) do
-                if id == ignoreItem then
-                    playerIsOnIgnoreList = true
-                end
+    for iid in ipairs(m.ignorelist) do
+        for pid in ipairs(playerIdentifiers) do
+            if m.ignorelist[iid] == playerIdentifiers[pid] then
+                playerOnIgnoreList = true
+                break
             end
         end
-    end)
-end
-
-function sendMessages()
-    local i = 1
-    Citizen.CreateThread(function()
-        Citizen.Wait(2000)
-        if (playerIsOnIgnoreList == false) then
-            while true do
-                if (messagesEnabled == true) then
-                    TriggerEvent('chatMessage', '', { 255, 255, 255 }, prefix .. " " .. messages[i] .. suffix)
-                    i = i + 1
-                    if (i == (count + 1)) then
-                        i = 1
-                    end
-                else
-                    print('automessages is disabled')
+    end
+    if not playerOnIgnoreList then
+        while true do
+            for i in pairs(m.messages) do
+                if enableMessages then
+                    chat(i)
+                    print('[vAnnouncer] Message #' .. i .. ' sent.')
                 end
                 Citizen.Wait(timeout)
             end
-        else
-            print('Player on ignore list.')
+            
+            Citizen.Wait(0)
         end
-    end)
-end
-
-AddEventHandler('playerSpawned', function()
-    if playerSpawned == false then
-        Citizen.CreateThread(function()
-            Citizen.Wait(2000)
-            TriggerServerEvent('va:getPlayerIdentifiers')
-            Citizen.Wait(2000)
-            checkForPlayerOnIgnoreList()
-            Citizen.Wait(2000)
-            sendMessages()
-            playerSpawned = true
-        end)
+    else
+        print('[vAnnouncer] Player is on ignorelist, no announcements will be received.')
     end
 end)
------------------------------------------------------
+function chat(i)
+    TriggerEvent('chatMessage', '', {255,255,255}, m.prefix .. m.messages[i] .. m.suffix)
+end
+RegisterCommand('automessage', function()
+    enableMessages = not enableMessages
+    if enableMessages then
+        status = '^2enabled^5.'
+    else
+        status = '^1disabled^5.'
+    end
+    TriggerEvent('chatMessage', '', {255, 255, 255}, '^5[vAnnouncer] automessages are now ' .. status)
+end, false)
+--------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-m = {} -- <<< Don't touch this!
+local m = {} -- <<< Don't touch this!
 -----------[ SETTINGS ]---------------------------------------------------
 
 -- Delay in minutes between messages
@@ -47,10 +47,10 @@ m.ignorelist = {
 
 
 -----[ CODE, DON'T TOUCH THIS ]-------------------------------------------
-playerIdentifiers = {}
-enableMessages = true
-timeout = m.delay * 1000 * 60 -- from ms, to sec, to min
-playerOnIgnoreList = false
+local playerIdentifiers
+local enableMessages = true
+local timeout = m.delay * 1000 * 60 -- from ms, to sec, to min
+local playerOnIgnoreList = false
 RegisterNetEvent('va:setPlayerIdentifiers')
 AddEventHandler('va:setPlayerIdentifiers', function(identifiers)
     playerIdentifiers = identifiers
@@ -60,8 +60,8 @@ Citizen.CreateThread(function()
         Citizen.Wait(1000)
         TriggerServerEvent('va:getPlayerIdentifiers')
     end
-    for iid in ipairs(m.ignorelist) do
-        for pid in ipairs(playerIdentifiers) do
+    for iid in pairs(m.ignorelist) do
+        for pid in pairs(playerIdentifiers) do
             if m.ignorelist[iid] == playerIdentifiers[pid] then
                 playerOnIgnoreList = true
                 break
